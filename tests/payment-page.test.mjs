@@ -15,7 +15,7 @@ test('normalizes ruble amounts to kopecks', () => {
   assert.equal(normalizeAmountToKopecks('1250,50'), 125050);
 });
 
-test('rejects invalid demo payment form data before API call', () => {
+test('rejects invalid payment form data before submission', () => {
   const result = validatePaymentForm({
     fullName: '',
     phone: '123',
@@ -30,14 +30,20 @@ test('rejects invalid demo payment form data before API call', () => {
   assert.match(result.errors.amount, /сумм/);
 });
 
-test('renders card and SBP payment modes and merchant blocker', () => {
+test('renders customer-facing card and SBP payment modes', () => {
   const html = buildPaymentPageHtml({ demoBlocked: true });
 
   assert.match(html, /Оплата/);
   assert.match(html, /Банковская карта/);
   assert.match(html, /СБП/);
-  assert.match(html, /merchantId/);
+  assert.match(html, /Точка Банк/);
   assert.doesNotMatch(html, /eyJhbGci/);
+});
+
+test('does not expose internal integration wording in customer HTML', () => {
+  const html = buildPaymentPageHtml({ demoBlocked: true });
+
+  assert.doesNotMatch(html, /merchantId|JWT|API|вебхук|фискализац|для теста|Демо|data-tochka-payment-demo/i);
 });
 
 test('renders site-integrated fragment without standalone document wrapper', () => {
@@ -48,6 +54,7 @@ test('renders site-integrated fragment without standalone document wrapper', () 
   assert.doesNotMatch(html, /<h1/i);
   assert.match(html, /#E52F42/i);
   assert.match(html, /payment-page/);
+  assert.match(html, /data-tochka-payment/);
 });
 
 test('wraps payment fragment with rendered site chrome', () => {
@@ -59,7 +66,7 @@ test('wraps payment fragment with rendered site chrome', () => {
   });
 
   assert.match(html, /<header class="header">Header<\/header>/);
-  assert.match(html, /data-tochka-payment-demo/);
+  assert.match(html, /data-tochka-payment/);
   assert.match(html, /<footer class="footer">Footer<\/footer>/);
   assert.match(html, /<title>Оплата<\/title>/);
   assert.doesNotMatch(html, /eyJhbGci/);

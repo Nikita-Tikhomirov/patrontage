@@ -45,7 +45,7 @@ export function validatePaymentForm(data) {
   }
 
   if (!amountKopecks || amountKopecks < 100) {
-    errors.amount = 'Минимальная сумма для теста - 1 рубль.';
+    errors.amount = 'Укажите сумму не менее 1 рубля.';
   }
 
   return {
@@ -58,15 +58,15 @@ export function validatePaymentForm(data) {
 function buildPaymentPageSection(options = {}) {
   const settings = { ...DEFAULT_OPTIONS, ...options };
   const blockedText = settings.demoBlocked
-    ? 'Платежная ссылка пока не создается: нужно выбрать merchantId терминала с чеками и подтвердить права JWT в Точке.'
-    : 'Платежная ссылка будет создана через API Точки.';
+    ? 'После отправки формы будет подготовлена ссылка или QR-код для оплаты.'
+    : 'После отправки формы откроется защищенная оплата Точка Банка.';
 
   const titleMarkup = settings.showTitle === false
     ? ''
     : `    <h1 class="payment-title">${settings.title}</h1>\n`;
 
-  return `<!-- Tochka payment demo page. Secrets are intentionally not embedded. -->
-<section class="payment-page" data-tochka-payment-demo>
+  return `<!-- Tochka payment page. Secrets are intentionally not embedded. -->
+<section class="payment-page" data-tochka-payment>
   <style>
     .payment-page {
       --payment-accent: #E52F42;
@@ -325,10 +325,10 @@ function buildPaymentPageSection(options = {}) {
   </style>
 
   <div class="payment-head">
-${titleMarkup}    <p class="payment-lead">Введите данные плательщика и сумму. Оплата будет проходить через Точка Банк: банковской картой или через СБП, с формированием чека.</p>
+${titleMarkup}    <p class="payment-lead">Заполните данные плательщика и сумму услуги. Оплатить можно банковской картой или через СБП, электронный чек будет отправлен на указанный email.</p>
     <div class="payment-status">
-      <span class="payment-badge">Демо</span>
-      <span class="payment-note">Готовим подключение к терминалу Точки с фискализацией.</span>
+      <span class="payment-badge">Безопасно</span>
+      <span class="payment-note">Оплата проходит на защищенной стороне Точка Банка.</span>
     </div>
   </div>
 
@@ -360,11 +360,11 @@ ${titleMarkup}    <p class="payment-lead">Введите данные плате
         <div class="payment-methods" aria-label="Способы оплаты">
           <div class="payment-method">
             <strong>Банковская карта</strong>
-            <span>Visa, Mastercard, МИР и другие карты, доступные в эквайринге Точки.</span>
+            <span>Оплата картой МИР или другой картой, доступной для онлайн-оплаты.</span>
           </div>
           <div class="payment-method">
             <strong>СБП</strong>
-            <span>Оплата по QR-коду или ссылке через приложение банка.</span>
+            <span>Оплата из приложения вашего банка по QR-коду или ссылке.</span>
           </div>
         </div>
 
@@ -382,18 +382,18 @@ ${titleMarkup}    <p class="payment-lead">Введите данные плате
 
     <aside class="payment-side">
       <div class="payment-panel">
-        <h2>Что будет после подключения</h2>
+        <h2>Как проходит оплата</h2>
         <ul class="payment-list">
-          <li>Сайт создаст платежную ссылку через API Точки.</li>
-          <li>Клиент сможет оплатить картой или через СБП.</li>
-          <li>Чек будет формироваться через выбранный терминал Точки.</li>
-          <li>Статус оплаты можно будет проверять по операции или вебхуку.</li>
+          <li>Вы указываете данные плательщика и сумму услуги.</li>
+          <li>Для оплаты будет подготовлена защищенная ссылка или QR-код.</li>
+          <li>Оплатить можно банковской картой или через СБП.</li>
+          <li>После успешной оплаты чек придет на указанный email.</li>
         </ul>
       </div>
       <div class="payment-panel">
-        <h2>QR для оплаты</h2>
-        <div class="payment-qr" aria-hidden="true"><span>Появится после создания платежной ссылки</span></div>
-        <p class="payment-note">Для запуска нужен merchantId терминала с чеками и подтвержденные права JWT на интернет-эквайринг.</p>
+        <h2>Оплата через СБП</h2>
+        <div class="payment-qr" aria-hidden="true"><span>QR-код появится после проверки данных</span></div>
+        <p class="payment-note">Если удобнее оплатить по ссылке, она будет доступна вместе с данными заказа.</p>
       </div>
     </aside>
   </div>
@@ -427,7 +427,7 @@ function pageScript() {
     if (data.fullName.trim().length < 5) errors.push('Укажите ФИО плательщика.');
     if (!/^\+?[0-9\s().-]{10,}$/.test(data.phone.trim())) errors.push('Укажите корректный телефон.');
     if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(data.email.trim())) errors.push('Укажите корректный email.');
-    if (!normalizeAmount(data.amount) || normalizeAmount(data.amount) < 100) errors.push('Минимальная сумма для теста - 1 рубль.');
+    if (!normalizeAmount(data.amount) || normalizeAmount(data.amount) < 100) errors.push('Укажите сумму не менее 1 рубля.');
     if (!data.offer) errors.push('Подтвердите согласие с офертой и обработкой данных.');
     return errors;
   }
@@ -475,13 +475,13 @@ function pageScript() {
     });
 
     summary.hidden = false;
-    summary.innerHTML = '<strong>Данные приняты для теста.</strong><br>' +
+    summary.innerHTML = '<strong>Данные для оплаты приняты.</strong><br>' +
       'Плательщик: ' + escapeHtml(data.fullName.trim()) + '<br>' +
       'Сумма: ' + amountRub + ' руб.<br>' +
-      'Способы оплаты: банковская карта и СБП.<br>' +
-      'Чек: будет формироваться через эквайринг Точки после выбора терминала с фискализацией.';
+      'Способ оплаты: банковская карта или СБП.<br>' +
+      'Ссылка или QR-код для оплаты будут подготовлены после проверки данных, электронный чек придет на указанный email.';
 
-    notice.textContent = 'Следующий шаг: клиент выбирает нужный терминал с чеками, после этого включаем создание платежной ссылки.';
+    notice.textContent = 'Спасибо. Мы подготовим ссылку или QR-код для оплаты и отправим чек после успешного платежа.';
   });
 })();`;
 }

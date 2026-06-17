@@ -334,7 +334,7 @@ ${titleMarkup}    <p class="payment-lead">Заполните данные пла
 
   <div class="payment-layout">
     <div class="payment-panel">
-      <form class="payment-form" data-payment-form>
+      <form class="payment-form" data-payment-form data-payment-endpoint="/tochka-create-payment">
         <div class="payment-grid">
           <label class="payment-field">
             <span class="payment-label">ФИО плательщика</span>
@@ -409,6 +409,7 @@ function pageScript() {
   var notice = document.querySelector('[data-payment-notice]');
   var summary = document.querySelector('[data-payment-summary]');
   var errorBox = document.querySelector('[data-payment-errors]');
+  var submitButton = form ? form.querySelector('button[type="submit"]') : null;
 
   function normalizeAmount(value) {
     var normalized = String(value || '').trim().replace(/\s+/g, '').replace(',', '.');
@@ -444,6 +445,52 @@ function pageScript() {
     });
   }
 
+  function showErrors(errors) {
+    errorBox.innerHTML = errors.map(function (error) {
+      return '<div class="payment-alert payment-alert-error">' + escapeHtml(error) + '</div>';
+    }).join('');
+  }
+
+  function showAcceptedSummary(data, amountRub) {
+    summary.hidden = false;
+    summary.innerHTML = '<strong>Данные для оплаты приняты.</strong><br>' +
+      'Плательщик: ' + escapeHtml(data.fullName.trim()) + '<br>' +
+      'Сумма: ' + amountRub + ' руб.<br>' +
+      'Способ оплаты: банковская карта или СБП.<br>' +
+      'Ссылка или QR-код для оплаты будут подготовлены после проверки данных, электронный чек придет на указанный email.';
+
+    notice.textContent = 'Спасибо. Мы подготовим ссылку или QR-код для оплаты и отправим чек после успешного платежа.';
+  }
+
+  function submitTochkaPayment(data) {
+    var endpoint = form.getAttribute('data-payment-endpoint');
+
+    if (!endpoint || !window.fetch) {
+      return Promise.resolve(null);
+    }
+
+    return fetch(endpoint, {
+      method: 'POST',
+      headers: {
+        'Accept': 'application/json',
+        'Content-Type': 'application/json'
+      },
+      body: JSON.stringify({
+        amount: data.amount,
+        email: data.email,
+        fullName: data.fullName,
+        phone: data.phone
+      })
+    }).then(function (response) {
+      return response.json().catch(function () {
+        return {};
+      }).then(function (payload) {
+        payload.httpOk = response.ok;
+        return payload;
+      });
+    });
+  }
+
   if (!form) return;
 
   form.addEventListener('submit', function (event) {
@@ -463,9 +510,7 @@ function pageScript() {
     summary.hidden = true;
 
     if (errors.length) {
-      errorBox.innerHTML = errors.map(function (error) {
-        return '<div class="payment-alert payment-alert-error">' + error + '</div>';
-      }).join('');
+      showErrors(errors);
       return;
     }
 
@@ -475,13 +520,39 @@ function pageScript() {
     });
 
     summary.hidden = false;
-    summary.innerHTML = '<strong>Данные для оплаты приняты.</strong><br>' +
-      'Плательщик: ' + escapeHtml(data.fullName.trim()) + '<br>' +
-      'Сумма: ' + amountRub + ' руб.<br>' +
-      'Способ оплаты: банковская карта или СБП.<br>' +
-      'Ссылка или QR-код для оплаты будут подготовлены после проверки данных, электронный чек придет на указанный email.';
+    summary.innerHTML = '<strong>Готовим ссылку на оплату.</strong><br>Пожалуйста, подождите несколько секунд.';
+    notice.textContent = 'Соединяемся с платежной страницей Точка Банка.';
 
-    notice.textContent = 'Спасибо. Мы подготовим ссылку или QR-код для оплаты и отправим чек после успешного платежа.';
+    if (submitButton) {
+      submitButton.disabled = true;
+      submitButton.textContent = 'Готовим оплату...';
+    }
+
+    submitTochkaPayment(data).then(function (result) {
+      if (result && result.success && result.paymentLink) {
+        summary.innerHTML = '<strong>Ссылка на оплату готова.</strong><br>Сейчас откроется защищенная платежная страница.';
+        window.location.href = result.paymentLink;
+        return;
+      }
+
+      if (result && result.errors) {
+        showErrors(Object.keys(result.errors).map(function (key) {
+          return result.errors[key];
+        }));
+        summary.hidden = true;
+        notice.textContent = result.message || 'Проверьте данные плательщика.';
+        return;
+      }
+
+      showAcceptedSummary(data, amountRub);
+    }).catch(function () {
+      showAcceptedSummary(data, amountRub);
+    }).finally(function () {
+      if (submitButton) {
+        submitButton.disabled = false;
+        submitButton.textContent = 'Подготовить оплату';
+      }
+    });
   });
 })();`;
 }

@@ -46,6 +46,14 @@ test('does not expose internal integration wording in customer HTML', () => {
   assert.doesNotMatch(html, /merchantId|JWT|API|вебхук|фискализац|для теста|Демо|data-tochka-payment-demo/i);
 });
 
+test('renders server payment endpoint integration hooks', () => {
+  const html = buildPaymentPageHtml({ demoBlocked: true });
+
+  assert.match(html, /data-payment-endpoint="\/tochka-create-payment"/);
+  assert.match(html, /fetch\(endpoint/);
+  assert.match(html, /paymentLink/);
+});
+
 test('renders site-integrated fragment without standalone document wrapper', () => {
   const html = buildPaymentPageFragmentHtml({ demoBlocked: true });
 

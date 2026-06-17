@@ -55,116 +55,69 @@ export function validatePaymentForm(data) {
   };
 }
 
-function pageScript() {
-  return String.raw`
-(function () {
-  var form = document.querySelector('[data-payment-form]');
-  var notice = document.querySelector('[data-payment-notice]');
-  var summary = document.querySelector('[data-payment-summary]');
-  var errorBox = document.querySelector('[data-payment-errors]');
-
-  function normalizeAmount(value) {
-    var normalized = String(value || '').trim().replace(/\s+/g, '').replace(',', '.');
-    if (!/^\d+(\.\d{1,2})?$/.test(normalized)) {
-      return null;
-    }
-    var amount = Number(normalized);
-    if (!Number.isFinite(amount) || amount <= 0) {
-      return null;
-    }
-    return Math.round(amount * 100);
-  }
-
-  function validate(data) {
-    var errors = [];
-    if (data.fullName.trim().length < 5) errors.push('Укажите ФИО плательщика.');
-    if (!/^\+?[0-9\s().-]{10,}$/.test(data.phone.trim())) errors.push('Укажите корректный телефон.');
-    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(data.email.trim())) errors.push('Укажите корректный email.');
-    if (!normalizeAmount(data.amount) || normalizeAmount(data.amount) < 100) errors.push('Минимальная сумма для теста - 1 рубль.');
-    if (!data.offer) errors.push('Подтвердите согласие с офертой и обработкой данных.');
-    return errors;
-  }
-
-  if (!form) return;
-
-  form.addEventListener('submit', function (event) {
-    event.preventDefault();
-
-    var data = {
-      fullName: form.fullName.value,
-      phone: form.phone.value,
-      email: form.email.value,
-      amount: form.amount.value,
-      offer: form.offer.checked
-    };
-    var errors = validate(data);
-
-    errorBox.innerHTML = '';
-    summary.hidden = true;
-
-    if (errors.length) {
-      errorBox.innerHTML = errors.map(function (error) {
-        return '<div class="payment-alert payment-alert-error">' + error + '</div>';
-      }).join('');
-      return;
-    }
-
-    var amountRub = (normalizeAmount(data.amount) / 100).toLocaleString('ru-RU', {
-      minimumFractionDigits: 2,
-      maximumFractionDigits: 2
-    });
-
-    summary.hidden = false;
-    summary.innerHTML = '<strong>Данные приняты для теста.</strong><br>' +
-      'Плательщик: ' + data.fullName.trim() + '<br>' +
-      'Сумма: ' + amountRub + ' руб.<br>' +
-      'Способы оплаты: банковская карта и СБП.<br>' +
-      'Чек: будет формироваться через эквайринг Точки после выбора терминала с фискализацией.';
-
-    notice.textContent = 'Следующий шаг: клиент выбирает нужный терминал с чеками, после этого включаем создание платежной ссылки.';
-  });
-})();`;
-}
-
-export function buildPaymentPageHtml(options = {}) {
+function buildPaymentPageSection(options = {}) {
   const settings = { ...DEFAULT_OPTIONS, ...options };
   const blockedText = settings.demoBlocked
     ? 'Платежная ссылка пока не создается: нужно выбрать merchantId терминала с чеками и подтвердить права JWT в Точке.'
     : 'Платежная ссылка будет создана через API Точки.';
 
-  const section = `<!-- Tochka payment demo page. Secrets are intentionally not embedded. -->
+  const titleMarkup = settings.showTitle === false
+    ? ''
+    : `    <h1 class="payment-title">${settings.title}</h1>\n`;
+
+  return `<!-- Tochka payment demo page. Secrets are intentionally not embedded. -->
 <section class="payment-page" data-tochka-payment-demo>
   <style>
     .payment-page {
-      --payment-accent: #1f6feb;
-      --payment-ink: #172033;
-      --payment-muted: #617086;
-      --payment-line: #d9e2ef;
-      --payment-bg: #f6f8fb;
+      --payment-accent: #E52F42;
+      --payment-accent-dark: #bd2334;
+      --payment-ink: #1b1b1f;
+      --payment-muted: #64666d;
+      --payment-line: #e6e6e8;
+      --payment-soft: #f7f7f8;
       color: var(--payment-ink);
       font-family: inherit;
       margin: 0 auto;
       max-width: 1120px;
-      padding: 34px 18px 48px;
+      padding: 0 0 42px;
     }
     .payment-page * { box-sizing: border-box; }
     .payment-head {
       display: grid;
-      gap: 10px;
-      margin-bottom: 24px;
+      gap: 12px;
+      margin-bottom: 26px;
     }
     .payment-title {
-      font-size: clamp(28px, 4vw, 44px);
+      color: var(--payment-ink);
+      font-size: clamp(30px, 4vw, 44px);
       font-weight: 700;
-      line-height: 1.1;
+      line-height: 1.12;
       margin: 0;
     }
     .payment-lead {
       color: var(--payment-muted);
-      font-size: 17px;
+      font-size: 18px;
       line-height: 1.55;
       margin: 0;
-      max-width: 760px;
+      max-width: 820px;
+    }
+    .payment-status {
+      align-items: center;
+      display: flex;
+      flex-wrap: wrap;
+      gap: 8px;
+      margin-top: 6px;
+    }
+    .payment-badge {
+      border: 1px solid rgba(229, 47, 66, .28);
+      border-radius: 999px;
+      color: var(--payment-accent);
+      display: inline-flex;
+      font-size: 13px;
+      font-weight: 700;
+      line-height: 1;
+      padding: 8px 12px;
+      text-transform: uppercase;
     }
     .payment-layout {
       display: grid;
@@ -175,7 +128,8 @@ export function buildPaymentPageHtml(options = {}) {
       background: #fff;
       border: 1px solid var(--payment-line);
       border-radius: 8px;
-      padding: 24px;
+      box-shadow: 0 12px 34px rgba(0, 0, 0, .06);
+      padding: 26px;
     }
     .payment-form {
       display: grid;
@@ -186,21 +140,23 @@ export function buildPaymentPageHtml(options = {}) {
       gap: 7px;
     }
     .payment-label {
+      color: var(--payment-ink);
       font-size: 14px;
       font-weight: 700;
     }
     .payment-input {
-      border: 1px solid #cbd6e6;
-      border-radius: 6px;
+      background: #fff;
+      border: 1px solid #d7d7db;
+      border-radius: 4px;
       color: var(--payment-ink);
       font: inherit;
-      min-height: 46px;
-      padding: 10px 12px;
+      min-height: 48px;
+      padding: 11px 13px;
       width: 100%;
     }
     .payment-input:focus {
       border-color: var(--payment-accent);
-      outline: 2px solid rgba(31, 111, 235, .16);
+      outline: 2px solid rgba(229, 47, 66, .14);
     }
     .payment-grid {
       display: grid;
@@ -209,24 +165,38 @@ export function buildPaymentPageHtml(options = {}) {
     }
     .payment-methods {
       display: grid;
-      gap: 10px;
+      gap: 12px;
       grid-template-columns: repeat(2, minmax(0, 1fr));
     }
     .payment-method {
-      border: 1px solid #cbd6e6;
+      background: var(--payment-soft);
+      border: 1px solid var(--payment-line);
       border-radius: 8px;
       display: grid;
-      gap: 4px;
-      min-height: 86px;
-      padding: 14px;
+      gap: 6px;
+      min-height: 90px;
+      padding: 15px;
+      position: relative;
+    }
+    .payment-method::before {
+      background: var(--payment-accent);
+      border-radius: 999px;
+      content: "";
+      height: 8px;
+      position: absolute;
+      right: 15px;
+      top: 17px;
+      width: 8px;
     }
     .payment-method strong {
+      color: var(--payment-ink);
       font-size: 15px;
+      padding-right: 20px;
     }
     .payment-method span {
       color: var(--payment-muted);
       font-size: 13px;
-      line-height: 1.35;
+      line-height: 1.38;
     }
     .payment-check {
       align-items: start;
@@ -236,21 +206,25 @@ export function buildPaymentPageHtml(options = {}) {
       line-height: 1.45;
     }
     .payment-check input {
+      accent-color: var(--payment-accent);
       margin-top: 3px;
     }
     .payment-button {
       background: var(--payment-accent);
       border: 0;
-      border-radius: 6px;
+      border-radius: 4px;
       color: #fff;
       cursor: pointer;
       font: inherit;
       font-weight: 700;
-      min-height: 48px;
-      padding: 12px 18px;
+      min-height: 50px;
+      padding: 13px 20px;
+      text-transform: uppercase;
+      transition: background .2s ease, transform .2s ease;
     }
     .payment-button:hover {
-      background: #185abc;
+      background: var(--payment-accent-dark);
+      transform: translateY(-1px);
     }
     .payment-alert {
       border-radius: 6px;
@@ -258,9 +232,9 @@ export function buildPaymentPageHtml(options = {}) {
       padding: 12px 14px;
     }
     .payment-alert-info {
-      background: #eef4ff;
-      border: 1px solid #c9dcff;
-      color: #174ea6;
+      background: #fff5f6;
+      border: 1px solid rgba(229, 47, 66, .24);
+      color: #7d1722;
     }
     .payment-alert-error {
       background: #fff0f0;
@@ -274,8 +248,10 @@ export function buildPaymentPageHtml(options = {}) {
       align-content: start;
     }
     .payment-side h2 {
+      color: var(--payment-ink);
       font-size: 22px;
-      margin: 0 0 12px;
+      line-height: 1.2;
+      margin: 0 0 14px;
     }
     .payment-list {
       display: grid;
@@ -284,8 +260,9 @@ export function buildPaymentPageHtml(options = {}) {
       padding: 0;
     }
     .payment-list li {
+      color: var(--payment-ink);
       list-style: none;
-      padding-left: 20px;
+      padding-left: 22px;
       position: relative;
     }
     .payment-list li::before {
@@ -302,8 +279,8 @@ export function buildPaymentPageHtml(options = {}) {
       align-items: center;
       aspect-ratio: 1;
       background:
-        linear-gradient(90deg, #172033 10px, transparent 10px) 18px 18px / 54px 54px,
-        linear-gradient(#172033 10px, transparent 10px) 18px 18px / 54px 54px,
+        linear-gradient(90deg, #1b1b1f 10px, transparent 10px) 18px 18px / 54px 54px,
+        linear-gradient(#1b1b1f 10px, transparent 10px) 18px 18px / 54px 54px,
         #fff;
       border: 1px solid var(--payment-line);
       border-radius: 8px;
@@ -330,6 +307,9 @@ export function buildPaymentPageHtml(options = {}) {
       margin: 0;
     }
     @media (max-width: 820px) {
+      .payment-page {
+        padding-bottom: 30px;
+      }
       .payment-layout,
       .payment-grid,
       .payment-methods {
@@ -338,12 +318,18 @@ export function buildPaymentPageHtml(options = {}) {
       .payment-panel {
         padding: 18px;
       }
+      .payment-lead {
+        font-size: 16px;
+      }
     }
   </style>
 
   <div class="payment-head">
-    <h1 class="payment-title">${settings.title}</h1>
-    <p class="payment-lead">Введите данные плательщика и сумму. Оплата будет проходить через Точка Банк: банковской картой или через СБП, с формированием чека.</p>
+${titleMarkup}    <p class="payment-lead">Введите данные плательщика и сумму. Оплата будет проходить через Точка Банк: банковской картой или через СБП, с формированием чека.</p>
+    <div class="payment-status">
+      <span class="payment-badge">Демо</span>
+      <span class="payment-note">Готовим подключение к терминалу Точки с фискализацией.</span>
+    </div>
   </div>
 
   <div class="payment-layout">
@@ -414,6 +400,99 @@ export function buildPaymentPageHtml(options = {}) {
 
   <script>${pageScript()}</script>
 </section>`;
+}
+
+function pageScript() {
+  return String.raw`
+(function () {
+  var form = document.querySelector('[data-payment-form]');
+  var notice = document.querySelector('[data-payment-notice]');
+  var summary = document.querySelector('[data-payment-summary]');
+  var errorBox = document.querySelector('[data-payment-errors]');
+
+  function normalizeAmount(value) {
+    var normalized = String(value || '').trim().replace(/\s+/g, '').replace(',', '.');
+    if (!/^\d+(\.\d{1,2})?$/.test(normalized)) {
+      return null;
+    }
+    var amount = Number(normalized);
+    if (!Number.isFinite(amount) || amount <= 0) {
+      return null;
+    }
+    return Math.round(amount * 100);
+  }
+
+  function validate(data) {
+    var errors = [];
+    if (data.fullName.trim().length < 5) errors.push('Укажите ФИО плательщика.');
+    if (!/^\+?[0-9\s().-]{10,}$/.test(data.phone.trim())) errors.push('Укажите корректный телефон.');
+    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(data.email.trim())) errors.push('Укажите корректный email.');
+    if (!normalizeAmount(data.amount) || normalizeAmount(data.amount) < 100) errors.push('Минимальная сумма для теста - 1 рубль.');
+    if (!data.offer) errors.push('Подтвердите согласие с офертой и обработкой данных.');
+    return errors;
+  }
+
+  function escapeHtml(value) {
+    return String(value).replace(/[&<>"']/g, function (char) {
+      return {
+        '&': '&amp;',
+        '<': '&lt;',
+        '>': '&gt;',
+        '"': '&quot;',
+        "'": '&#39;'
+      }[char];
+    });
+  }
+
+  if (!form) return;
+
+  form.addEventListener('submit', function (event) {
+    event.preventDefault();
+    var fields = form.elements;
+
+    var data = {
+      fullName: fields.fullName.value,
+      phone: fields.phone.value,
+      email: fields.email.value,
+      amount: fields.amount.value,
+      offer: fields.offer.checked
+    };
+    var errors = validate(data);
+
+    errorBox.innerHTML = '';
+    summary.hidden = true;
+
+    if (errors.length) {
+      errorBox.innerHTML = errors.map(function (error) {
+        return '<div class="payment-alert payment-alert-error">' + error + '</div>';
+      }).join('');
+      return;
+    }
+
+    var amountRub = (normalizeAmount(data.amount) / 100).toLocaleString('ru-RU', {
+      minimumFractionDigits: 2,
+      maximumFractionDigits: 2
+    });
+
+    summary.hidden = false;
+    summary.innerHTML = '<strong>Данные приняты для теста.</strong><br>' +
+      'Плательщик: ' + escapeHtml(data.fullName.trim()) + '<br>' +
+      'Сумма: ' + amountRub + ' руб.<br>' +
+      'Способы оплаты: банковская карта и СБП.<br>' +
+      'Чек: будет формироваться через эквайринг Точки после выбора терминала с фискализацией.';
+
+    notice.textContent = 'Следующий шаг: клиент выбирает нужный терминал с чеками, после этого включаем создание платежной ссылки.';
+  });
+})();`;
+}
+
+export function buildPaymentPageFragmentHtml(options = {}) {
+  return buildPaymentPageSection({ ...options, showTitle: false });
+}
+
+export function buildPaymentPageHtml(options = {}) {
+  const settings = { ...DEFAULT_OPTIONS, ...options };
+  const section = buildPaymentPageSection({ ...settings, showTitle: true });
 
   return `<!doctype html>
 <html lang="ru">
@@ -429,11 +508,81 @@ ${section}
 </html>`;
 }
 
+export function wrapPaymentPageWithSiteChrome({
+  bodyScriptsHtml = '',
+  footerHtml,
+  headAssetsHtml = '',
+  headerHtml,
+  paymentHtml = buildPaymentPageFragmentHtml(),
+  title = 'Оплата',
+} = {}) {
+  if (!headerHtml || !footerHtml) {
+    throw new Error('Header and footer HTML are required to build the site payment page.');
+  }
+
+  return `<!doctype html>
+<html lang="ru">
+<head>
+  <meta charset="utf-8">
+  <base href="https://patronage-service.ru/">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0">
+  <meta name="robots" content="noindex, nofollow">
+  <title>${title}</title>
+${headAssetsHtml}
+  <style>
+    .payment-template-main {
+      background: #f6f6f6;
+      padding: 160px 0 58px;
+    }
+    .payment-template-title {
+      color: #0b0b0b;
+      font-size: clamp(32px, 4vw, 48px);
+      font-weight: 700;
+      line-height: 1.1;
+      margin: 0 auto 26px;
+      max-width: 1120px;
+      padding: 0 20px;
+    }
+    .payment-template-inner {
+      margin: 0 auto;
+      max-width: 1160px;
+      padding: 0 20px;
+    }
+    .payment-template-inner .payment-page {
+      max-width: 1120px;
+    }
+    @media (max-width: 820px) {
+      .payment-template-main {
+        padding: 112px 0 42px;
+      }
+      .payment-template-title {
+        margin-bottom: 18px;
+      }
+    }
+  </style>
+</head>
+<body>
+${headerHtml}
+<main class="payment-template-main">
+  <h1 class="payment-template-title">${title}</h1>
+  <div class="payment-template-inner">
+${paymentHtml}
+  </div>
+</main>
+${footerHtml}
+${bodyScriptsHtml}
+</body>
+</html>`;
+}
+
 function main() {
   const outputPath = resolve('dist/oplata.html');
+  const fragmentPath = resolve('dist/oplata.fragment.html');
   mkdirSync(dirname(outputPath), { recursive: true });
   writeFileSync(outputPath, buildPaymentPageHtml(), 'utf8');
+  writeFileSync(fragmentPath, buildPaymentPageFragmentHtml(), 'utf8');
   console.log(outputPath);
+  console.log(fragmentPath);
 }
 
 if (process.argv[1] === fileURLToPath(import.meta.url)) {

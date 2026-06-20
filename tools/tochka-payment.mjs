@@ -51,13 +51,13 @@ export function buildTochkaReceiptPayload(formData = {}, config = {}) {
   const paymentLinkId = String(formData.paymentLinkId || '').trim();
   const payload = {
     amount,
-    client: {
+    Client: {
       email: String(formData.email ?? '').trim(),
       name: String(formData.fullName ?? '').trim(),
       phone: normalizePhone(formData.phone),
     },
     customerCode: String(config.customerCode ?? '').trim(),
-    items: [{
+    Items: [{
       amount,
       measure: String(config.measure || 'шт.').trim(),
       name: serviceName,
@@ -79,7 +79,9 @@ export function buildTochkaReceiptPayload(formData = {}, config = {}) {
     payload.paymentLinkId = paymentLinkId;
   }
 
-  return payload;
+  return {
+    Data: payload,
+  };
 }
 
 export function extractTochkaPaymentLink(response = {}) {

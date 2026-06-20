@@ -10,6 +10,9 @@ test('PHP endpoint is configurable without committed secrets', async () => {
   assert.match(endpoint, /TOCHKA_MERCHANT_ID/);
   assert.match(endpoint, /TOCHKA_CUSTOMER_CODE/);
   assert.match(endpoint, /tochka-payment\.local\.php/);
+  assert.match(endpoint, /'Data' => \[/);
+  assert.match(endpoint, /'Client' => \[/);
+  assert.match(endpoint, /'Items' => \[/);
   assert.doesNotMatch(endpoint, /eyJhbGci|JCG29|HTTP_MODAUTH/);
   assert.doesNotMatch(configExample, /eyJhbGci|JCG29|HTTP_MODAUTH/);
 });

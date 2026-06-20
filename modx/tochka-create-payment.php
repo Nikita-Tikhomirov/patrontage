@@ -138,16 +138,16 @@ function build_tochka_payload(array $form, array $config): array
     $serviceName = trim((string)$config['serviceName']);
     $paymentLinkId = 'patronage-' . date('YmdHis') . '-' . bin2hex(random_bytes(3));
 
-    return [
+    return ['Data' => [
         'amount' => $form['amount'],
-        'client' => [
+        'Client' => [
             'email' => $form['email'],
             'name' => $form['fullName'],
             'phone' => $form['phone'],
         ],
         'customerCode' => trim((string)$config['customerCode']),
         'failRedirectUrl' => trim((string)$config['failRedirectUrl']),
-        'items' => [[
+        'Items' => [[
             'amount' => $form['amount'],
             'measure' => 'шт.',
             'name' => $serviceName,
@@ -163,7 +163,7 @@ function build_tochka_payload(array $form, array $config): array
         'purpose' => 'Оплата услуги по подбору персонала',
         'redirectUrl' => trim((string)$config['redirectUrl']),
         'taxSystemCode' => trim((string)$config['taxSystemCode']),
-    ];
+    ]];
 }
 
 function extract_payment_link(array $response): string

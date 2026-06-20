@@ -24,19 +24,20 @@ test('builds Tochka payment-with-receipt payload for card and SBP', () => {
     vatType: 'none',
   });
 
-  assert.equal(payload.amount, '1000.00');
-  assert.equal(payload.customerCode, 'customer-code');
-  assert.equal(payload.merchantId, '123456789012345');
-  assert.equal(payload.purpose, 'Оплата услуги по подбору персонала');
-  assert.deepEqual(payload.paymentMode, ['card', 'sbp']);
-  assert.equal(payload.paymentLinkId, 'patronage-123');
-  assert.equal(payload.taxSystemCode, 'usn_income_outcome');
-  assert.deepEqual(payload.client, {
+  assert.ok(payload.Data);
+  assert.equal(payload.Data.amount, '1000.00');
+  assert.equal(payload.Data.customerCode, 'customer-code');
+  assert.equal(payload.Data.merchantId, '123456789012345');
+  assert.equal(payload.Data.purpose, 'Оплата услуги по подбору персонала');
+  assert.deepEqual(payload.Data.paymentMode, ['card', 'sbp']);
+  assert.equal(payload.Data.paymentLinkId, 'patronage-123');
+  assert.equal(payload.Data.taxSystemCode, 'usn_income_outcome');
+  assert.deepEqual(payload.Data.Client, {
     email: 'client@example.ru',
     name: 'Иванов Иван Иванович',
     phone: '+79001112233',
   });
-  assert.deepEqual(payload.items, [{
+  assert.deepEqual(payload.Data.Items, [{
     amount: '1000.00',
     measure: 'шт.',
     name: 'Услуга по подбору персонала',

@@ -166,16 +166,16 @@ if (!function_exists('patronage_tochka_payload')) {
     {
         $serviceName = trim((string)$config['serviceName']);
 
-        return [
+        return ['Data' => [
             'amount' => $form['amount'],
-            'client' => [
+            'Client' => [
                 'email' => $form['email'],
                 'name' => $form['fullName'],
                 'phone' => $form['phone'],
             ],
             'customerCode' => trim((string)$config['customerCode']),
             'failRedirectUrl' => trim((string)$config['failRedirectUrl']),
-            'items' => [[
+            'Items' => [[
                 'amount' => $form['amount'],
                 'measure' => 'шт.',
                 'name' => $serviceName,
@@ -191,7 +191,7 @@ if (!function_exists('patronage_tochka_payload')) {
             'purpose' => 'Оплата услуги по подбору персонала',
             'redirectUrl' => trim((string)$config['redirectUrl']),
             'taxSystemCode' => trim((string)$config['taxSystemCode']),
-        ];
+        ]];
     }
 }
 

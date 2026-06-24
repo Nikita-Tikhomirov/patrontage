@@ -65,7 +65,10 @@ node --test --test-concurrency=1 tests/payment-page.test.mjs
 
 return [
     'jwt' => 'JWT из личного кабинета Точки',
-    'customerCode' => 'код клиента из JWT/Точки',
+    // customerCode нужно получить через API, а не из JWT:
+    //   TOCHKA_JWT="ваш-jwt" node tools/get-customer-code.mjs
+    // Нужное значение — поле customerCode у записи с customerType: "Business".
+    'customerCode' => 'customerCode из Get Customers List (см. инструкцию ниже)',
     'merchantId' => 'merchantId активной торговой точки интернет-эквайринга',
     'serviceName' => 'Услуга по подбору персонала',
     'taxSystemCode' => 'usn_income_outcome',
@@ -83,9 +86,28 @@ return [
 
 Точка принимает тело запроса в корневом объекте `Data`; внутри него данные покупателя и позиции чека передаются как `Client` и `Items`.
 
+## Как получить правильный customerCode
+
+`customerCode` **нельзя** брать из JWT или угадывать. Поддержка Точки подтвердила: нужно вызывать API Get Customers List и брать `customerCode` у записи с `customerType: "Business"`.
+
+Быстрый способ — встроенный скрипт:
+
+```bash
+TOCHKA_JWT="ваш-jwt" node tools/get-customer-code.mjs
+```
+
+Скрипт вызывает `GET /open-banking/v1.0/customers`, фильтрует по `customerType: "Business"` и выводит `customerCode`.
+
+Под капотом:
+
+- Метод: `GET https://enter.tochka.com/uapi/open-banking/v1.0/customers`
+- Заголовок: `Authorization: Bearer <JWT>`
+- В ответе ищем объект с `customerType: "Business"`, берём его `customerCode`
+
+После получения правильного `customerCode` обновите его в конфигурации (MODX-настройка `tochka.customer_code`, переменная окружения `TOCHKA_CUSTOMER_CODE` или локальный файл `tochka-payment.local.php`).
+
 ## Что нужно для следующего шага
 
-От клиента/Точки нужно получить:
-
-- новый JWT с согласием/правами на создание платежных ссылок интернет-эквайринга с чеком;
-- после замены JWT повторить тестовую ссылку на 1 рубль.
+- Подставить правильный `customerCode`, полученный через Get Customers List;
+- повторить тестовый платёж на 1 рубль;
+- если платёж всё ещё возвращает ошибку — проверить права JWT (scopes) на создание платёжных ссылок с чеком.

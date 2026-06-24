@@ -54,7 +54,8 @@ try {
   }
 
   // The API wraps responses in a "Data" envelope.
-  const customers = data?.Data ?? data?.data ?? data;
+  // The customers list may be at Data.Customer (nested object) or Data (flat array).
+  const customers = data?.Data?.Customer ?? data?.Data ?? data?.data ?? data;
 
   if (!Array.isArray(customers)) {
     console.error('Unexpected response shape. Expected an array of customers.');

@@ -411,6 +411,35 @@ function pageScript() {
   var errorBox = document.querySelector('[data-payment-errors]');
   var submitButton = form ? form.querySelector('button[type="submit"]') : null;
 
+  /* ---- redirect from Tochka payment ---- */
+  (function () {
+    var query = new URLSearchParams(window.location.search);
+    var status = query.get('payment');
+    if (status !== 'success' && status !== 'fail') return;
+
+    var head = document.querySelector('.payment-head');
+    var layout = document.querySelector('.payment-layout');
+    if (form) form.style.display = 'none';
+    if (layout) layout.style.display = 'none';
+
+    if (status === 'success') {
+      head.insertAdjacentHTML('afterend',
+        '<div style="background:#e8f5e9;border:1px solid #a5d6a7;border-radius:8px;color:#2e7d32;font-size:18px;margin-bottom:24px;padding:28px 24px;text-align:center">' +
+        '<strong style="font-size:22px">Оплата прошла успешно</strong><br>' +
+        'Электронный чек отправлен на указанный email. Спасибо!</div>');
+    } else {
+      head.insertAdjacentHTML('afterend',
+        '<div style="background:#fff0f0;border:1px solid #ffd0d0;border-radius:8px;color:#9f1d1d;font-size:18px;margin-bottom:24px;padding:28px 24px;text-align:center">' +
+        '<strong style="font-size:22px">Оплата не прошла</strong><br>' +
+        'Пожалуйста, попробуйте ещё раз или свяжитесь с нами.</div>');
+    }
+
+    if (window.history && window.history.replaceState) {
+      window.history.replaceState({}, '', window.location.pathname);
+    }
+  })();
+  /* ---- end redirect handler ---- */
+
   function normalizeAmount(value) {
     var normalized = String(value || '').trim().replace(/\s+/g, '').replace(',', '.');
     if (!/^\d+(\.\d{1,2})?$/.test(normalized)) {
